@@ -1,0 +1,124 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        mavenLocal()
+    }
+    
+   dependencies {
+      classpath "com.github.jengelman.gradle.plugins:shadow:6.0.0"
+   }
+}
+
+plugins {
+    id "java"
+    id "com.google.cloud.tools.jib" version "3.1.1"
+    id "idea"
+    id "eclipse"
+    id 'org.graalvm.buildtools.native' version '0.9.19'
+    id 'io.quarkus' version '2.15.0.Final'
+}
+
+//sourceCompatibility = "1.8"
+//targetCompatibility = "1.8"
+version = "0.0.1"
+
+repositories {
+    mavenCentral()
+    //maven {
+    //    url "https://packages.confluent.io/maven"
+    //}
+    gradlePluginPortal()
+}
+
+apply plugin: "com.github.johnrengelman.shadow"
+
+dependencies {
+    implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
+
+    implementation "org.slf4j:slf4j-simple:1.7.30"
+
+//    implementation "org.apache.kafka:kafka-streams:3.2.0"
+//    implementation "io.confluent:common-utils:7.2.0"
+    implementation "org.apache.kafka:kafka-clients:3.2.0"
+//    implementation "org.apache.kafka:connect-api:3.2.0"
+    implementation "com.github.javafaker:javafaker:1.0.2"
+	implementation "com.fasterxml.jackson.core:jackson-databind:2.14.1"
+	implementation 'com.fasterxml.jackson.module:jackson-module-afterburner:2.14.1'
+	implementation 'com.google.code.gson:gson:2.8.5'
+//	implementation 'io.quarkus:quarkus-smallrye-reactive-messaging-kafka:2.15.0.Final'
+    implementation 'io.quarkus:quarkus-resteasy:2.15.0.Final'
+
+    implementation 'io.quarkus:quarkus-kafka-streams:2.15.0.Final'
+    implementation 'org.rocksdb:rocksdbjni:6.29.4.1'
+    implementation 'com.github.luben:zstd-jni:1.5.2-1'
+    implementation 'io.quarkus:quarkus-arc:2.15.0.Final'
+
+    implementation 'io.quarkus:quarkus-builder:2.15.0.Final'
+
+    implementation 'log4j:log4j:1.2.17'
+    implementation 'io.netty:netty-common:4.1.31.Final'
+    implementation 'org.apache.logging.log4j:log4j-core:2.19.0'
+    implementation 'org.apache.logging.log4j:log4j-api:2.19.0'
+
+    implementation 'io.quarkus:quarkus-container-image-jib'
+    testImplementation 'io.quarkus:quarkus-junit5:2.15.0.Final'
+    
+    testImplementation "org.apache.kafka:kafka-streams-test-utils:2.8.1"
+    testImplementation "junit:junit:4.13.2"
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+}
+
+test {
+    testLogging {
+        outputs.upToDateWhen { false }
+        showStandardStreams = true
+        exceptionFormat = "full"
+    }
+}
+
+jar {
+  manifest {
+    attributes(
+      "Class-Path": configurations.compileClasspath.collect { it.getName() }.join(" "),
+      "Main-Class": "com.sarwarbhuiyan.examples.KafkaStreamsHourlySubscribers"
+    )
+  }
+}
+
+java {
+   toolchain {
+       languageVersion = JavaLanguageVersion.of(17)
+       
+   }
+}
+
+graalvmNative {
+	binaries.all {
+         resources.autodetect()
+    }
+    
+    toolchainDetection = false
+	
+	binaries {
+	  main {
+	  		javaLauncher = javaToolchains.launcherFor {
+                 languageVersion = JavaLanguageVersion.of(17)
+                 vendor = JvmVendorSpec.matching("GraalVM Community")
+            }
+  			imageName = 'hourly-subscribers' // The name of the native image, defaults to the project name
+            mainClass = 'com.sarwarbhuiyan.examples.KafkaStreamsHourlySubscribers' 
+	  		useFatJar = true
+	  
+	  }
+	}
+}
+
+
+
+
+shadowJar {
+    archiveBaseName = "hourly-subscribers"
+    archiveClassifier = ''
+}
+
+
